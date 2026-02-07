@@ -21,7 +21,7 @@ This project was developed as part of my web development and modern authenticati
 - Node.js 16+ and npm
 - Keycloak server running on `http://localhost:8080`
 - Configured realm: `finance-realm`
-- Configured client: `frontend-finance-app`
+- Configured client: `finance-frontend-app`
 
 ## ⚙️ Keycloak Configuration
 
@@ -31,14 +31,14 @@ This project was developed as part of my web development and modern authenticati
 
 ### 2. Create Client
 
-- **Client ID:** `frontend-finance-app`
+- **Client ID:** `finance-frontend-app`
 - **Client Type:** OpenID Connect
 - **Access Type:** public
 - **Standard Flow Enabled:** ON
 - **Direct Access Grants Enabled:** ON
-- **Valid Redirect URIs:** `http://localhost:3000/*`
-- **Valid Post Logout Redirect URIs:** `http://localhost:3000/*`
-- **Web Origins:** `http://localhost:3000`
+- **Valid Redirect URIs:** `http://localhost:300/*` (Docker) or `http://localhost:3000/*` (npm start)
+- **Valid Post Logout Redirect URIs:** `http://localhost:300/*` (Docker) or `http://localhost:3000/*` (npm start)
+- **Web Origins:** `http://localhost:300` (Docker) or `http://localhost:3000` (npm start)
 
 ### 3. Configure Roles (Optional)
 
@@ -52,9 +52,20 @@ Create roles in the realm or client as needed. Roles will be displayed in the us
 npm install
 ```
 
-2. **Configure the file `src/config/keycloak.config.ts`:**
-   - Adjust `baseUrl`, `realm` and `clientId` according to your environment
-   - URLs are already pre-configured for `finance-realm`
+2. **Configure the `.env.local` file:**
+   - Based on the example below (project default values)
+   - These variables are used at runtime by the Docker container
+   - For `npm start` (CRA), optionally duplicate them with the `REACT_APP_` prefix
+
+```env
+KEYCLOAK_BASE_URL=http://localhost:8080
+KEYCLOAK_REALM=finance-realm
+KEYCLOAK_CLIENT_ID=finance-frontend-app
+KEYCLOAK_REDIRECT_URI=http://localhost:3000/callback
+KEYCLOAK_LOGOUT_REDIRECT_URI=http://localhost:3000
+```
+
+If you're using a different port, update the redirects to the same app origin.
 
 3. **Run the project:**
 
@@ -63,6 +74,22 @@ npm start
 ```
 
 The application will be available at `http://localhost:3000`
+
+## 🐳 Docker (React build + Nginx)
+
+1. **Make sure the `.env.local` file contains the Keycloak variables.**
+
+2. **Build and run with Docker Compose:**
+
+```bash
+docker compose up --build
+```
+
+The application will be available at `http://localhost:3000`
+
+Notes:
+- `.env.local` is not copied into the image.
+- Variables are injected at runtime via `docker-entrypoint.sh` → `public/env.js`.
 
 ## 🎯 Features
 
@@ -105,7 +132,7 @@ User accesses http://localhost:3000
 Automatically redirects to Keycloak
     ↓
 GET /realms/finance-realm/protocol/openid-connect/auth
-    ?client_id=frontend-finance-app
+    ?client_id=finance-frontend-app
     &redirect_uri=http://localhost:3000/callback
     &response_type=code
     &scope=openid profile email
@@ -149,7 +176,7 @@ Clears localStorage (tokens and user info)
 Redirects to Keycloak logout
     ↓
 GET /realms/finance-realm/protocol/openid-connect/logout
-    ?client_id=frontend-finance-app
+    ?client_id=finance-frontend-app
     &post_logout_redirect_uri=http://localhost:3000
     ↓
 Keycloak ends SSO session
@@ -159,7 +186,7 @@ Redirects to http://localhost:3000 (without authentication)
 
 ## 🔗 Keycloak Endpoints
 
-The endpoints are configured in `src/config/keycloak.config.ts`:
+The endpoints are derived in `src/config/keycloak.config.ts` from environment variables (example with default `.env.local` values):
 
 | Endpoint         | URL                                                                                |
 | ---------------- | ---------------------------------------------------------------------------------- |

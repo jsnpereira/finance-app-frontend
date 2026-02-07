@@ -1,11 +1,11 @@
-import { KEYCLOAK_CONFIG } from '../config/keycloak.config';
-import { UserInfo, TokenResponse } from '../types/auth.types';
+import { KEYCLOAK_CONFIG } from "../config/keycloak.config";
+import { UserInfo, TokenResponse } from "../types/auth.types";
 
 // Chave para armazenar dados no localStorage
 const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
-  USER_INFO: 'user_info',
+  ACCESS_TOKEN: "access_token",
+  REFRESH_TOKEN: "refresh_token",
+  USER_INFO: "user_info",
 };
 
 /**
@@ -24,43 +24,48 @@ export const doRegister = (): void => {
 
 /**
  * Faz logout completo do Keycloak e limpa dados locais
+ * Redireciona diretamente para a tela de login após logout
  */
 export const doLogout = (): void => {
   // Limpa o localStorage
   localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER_INFO);
-  
-  // Faz logout no Keycloak para encerrar a sessão SSO
-  const logoutUrl = `${KEYCLOAK_CONFIG.urls.logout}?client_id=${KEYCLOAK_CONFIG.clientId}&post_logout_redirect_uri=${encodeURIComponent(KEYCLOAK_CONFIG.logoutRedirectUri)}`;
+
+  // Faz logout no Keycloak e redireciona para a URL configurada
+  const logoutRedirect =
+    KEYCLOAK_CONFIG.logoutRedirectUri || window.location.origin;
+  const logoutUrl = `${KEYCLOAK_CONFIG.urls.logout}?client_id=${KEYCLOAK_CONFIG.clientId}&post_logout_redirect_uri=${encodeURIComponent(logoutRedirect)}`;
   window.location.href = logoutUrl;
 };
 
 /**
  * Troca o código de autorização por tokens de acesso
  */
-export const exchangeCodeForToken = async (code: string): Promise<TokenResponse> => {
+export const exchangeCodeForToken = async (
+  code: string,
+): Promise<TokenResponse> => {
   const params = new URLSearchParams({
-    grant_type: 'authorization_code',
+    grant_type: "authorization_code",
     client_id: KEYCLOAK_CONFIG.clientId,
     redirect_uri: KEYCLOAK_CONFIG.redirectUri,
     code: code,
   });
 
   const response = await fetch(KEYCLOAK_CONFIG.urls.token, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body: params.toString(),
   });
 
   if (!response.ok) {
-    throw new Error('Falha ao trocar código por token');
+    throw new Error("Falha ao trocar código por token");
   }
 
   const tokenData: TokenResponse = await response.json();
-  
+
   // Armazena os tokens
   localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokenData.access_token);
   if (tokenData.refresh_token) {
@@ -75,32 +80,32 @@ export const exchangeCodeForToken = async (code: string): Promise<TokenResponse>
  */
 export const fetchUserInfo = async (): Promise<UserInfo> => {
   const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  
+
   if (!accessToken) {
-    throw new Error('Token de acesso não encontrado');
+    throw new Error("Token de acesso não encontrado");
   }
 
   const response = await fetch(KEYCLOAK_CONFIG.urls.userInfo, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 
   if (!response.ok) {
-    throw new Error('Falha ao buscar informações do usuário');
+    throw new Error("Falha ao buscar informações do usuário");
   }
 
   const data = await response.json();
-  
+
   // Decodifica o token para obter as roles
   const tokenPayload = parseJwt(accessToken);
   const roles = tokenPayload?.realm_access?.roles || [];
 
   const userInfo: UserInfo = {
-    name: data.name || data.preferred_username || 'Usuário',
-    email: data.email || '',
-    username: data.preferred_username || '',
+    name: data.name || data.preferred_username || "Usuário",
+    email: data.email || "",
+    username: data.preferred_username || "",
     roles: roles,
     sub: data.sub,
   };
@@ -117,7 +122,7 @@ export const fetchUserInfo = async (): Promise<UserInfo> => {
 export const getUserInfo = (): UserInfo | null => {
   const userInfoStr = localStorage.getItem(STORAGE_KEYS.USER_INFO);
   if (!userInfoStr) return null;
-  
+
   try {
     return JSON.parse(userInfoStr) as UserInfo;
   } catch {
@@ -162,17 +167,17 @@ export const hasRole = (role: string): boolean => {
  */
 const parseJwt = (token: string): any => {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error('Erro ao decodificar JWT:', error);
+    console.error("Erro ao decodificar JWT:", error);
     return null;
   }
 };
@@ -182,10 +187,10 @@ const parseJwt = (token: string): any => {
  */
 export const handleAuthCallback = async (): Promise<UserInfo> => {
   const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get('code');
+  const code = urlParams.get("code");
 
   if (!code) {
-    throw new Error('Código de autorização não encontrado');
+    throw new Error("Código de autorização não encontrado");
   }
 
   // Troca o código por tokens
